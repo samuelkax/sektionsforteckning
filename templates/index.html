@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sektionsförteckning</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            position: relative;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px; /* Add some space before the table */
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        .download-button {
+            margin-top: 20px; /* Add space above the download button */
+            margin-bottom: 20px; /* Add space below the download button */
+        }
+        .error {
+            color: red;
+            margin-bottom: 20px;
+        }
+        .links {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            text-align: right;
+        }
+        .links a {
+            display: block;
+            margin-bottom: 5px; /* Space between the links */
+        }
+    </style>
+</head>
+<body>
+    <h1>Schneider-programmering till sektionsförteckning v0.1-a.1</h1>
+    
+    <!-- Links to the README and Release Notes pages positioned in the upper right corner -->
+    <div class="links">
+        <a href="{{ url_for('release_notes') }}">Release Notes</a>
+        <a href="{{ url_for('readme') }}">Read Instructions</a>
+    </div>
+
+    <!-- Display flashed messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="error">
+        {% for category, message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".csv">
+        <input type="submit" value="Generera sektionsförteckning">
+    </form>
+
+    {% if processed_rows %}
+    <div class="download-button">
+        <a href="{{ url_for('download_file', filename=download_link) }}">
+            <button>Ladda ned sektionsförteckning</button>
+        </a>
+    </div>
+    
+    <h2>Sektionsförteckning:</h2>
+    <table>
+        <tr>
+            <th>Sektion</th>
+            <th>Adress</th>
+        </tr>
+        {% for row in processed_rows %}
+        <tr>
+            <td>{{ row[0] }}</td>
+            <td>{{ row[1] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% endif %}
+</body>
+</html>
