@@ -1,0 +1,22 @@
+﻿device_type;article_number;object_code
+Manual call point, indoor;160256BOM;S
+;FFS00703910SE;
+;FFS00703920SEBOM;
+;FFS06425171;
+Optical smoke detector;FFS06710602;B
+Multi-criteria detector;FFS06710604;B
+Static thermal detector;FFS06710614;B
+High thermal detector;FFS06710616;B
+Detector base sounder;FFS06711721;P
+;FFS06711722;
+Wall mounted sounder;FFS06711737;P
+;FFS06711738;
+Wall mounted strobe;FFS06711747;P
+;FFS06716518;
+Single output module;FFS06717002;K
+Single input module;FFS06717011;K
+Conventional zone module;FFS06717031;B
+Wall mounted sounder strobe;FFS06711745;P
+Dual input module;FFS06717020;K
+Single output module, 240V;FFS06717043;K
+Four-criteria detector;FFS06710607;B

@@ -22,7 +22,7 @@
 <body>
     <div class="content">
         <h1>README</h1>
-        <p>Det här skriptet konverterar en Schneider-programmering till en sektionsförteckning som man kan använda för OR/SR.</p>
+        <p>Det här skriptet konverterar en Schneider-programmering till en sektionsförteckning som man kan använda för OR/SR samt genererar en fil för import till mbiz</p>
         <p>Skriptet exkluderar enheter som inte ska vara med i sektionsföteckning. För närvarande är det dessa enheter:</p>
 
         <!-- Display the invalid types dynamically -->
@@ -32,18 +32,22 @@
             {% endfor %}
         </ul>
 
+        <p>För konverteringen till mbiz behöver scriptet veta vad enhetstyperna i schneider-programmeringen har för artikelnummer i mbiz. Den informationen ligger i en hårdkodad fil.
+        <br>Kontakta <a href="mailto:samuel.kax@dss-larm.com">Samuel Kax</a> för att lägga till enheter i den listan.</p>
+
         <h2>Hur du använder skriptet</h2>
         <ol>
             <li>Tryck på "Bläddra" och leta upp din csv-fil som är exporterad från Schneider.</li>
-            <li>Tryck på "Generera sektionsförteckning"</li>
+            <li>Tryck på "Generera filer"</li>
             <li>Sektionsförteckning presenteras i en tabell och du kan välja att ladda ned en ny csv genom att klicka på "Ladda ned sektionsförteckning"</li>
+            <li>För att ladda ner fil för import till mbiz klicka på "Ladda ned fil för mbiz</li>
         </ol>
 
         <h2>CSV-Filen</h2>
         <ul>
             <li>Filen måste vara i CSV och exporterad från Schneider</li>
             <li>Skriptet kollar detta genom att säkerställa att rad två innehåller <strong>"Rapport konfiguration"</strong></li>
-            <li>Skriptet filtrerar bort enheter som inte ska vara med. Kontakta <a href="mailto:samuel.kax@dss-larm.com">Samuel Kax</a> för att lägga till enheter i den lista.</li>
+            <li>Skriptet filtrerar bort enheter som inte ska vara med. Kontakta <a href="mailto:samuel.kax@dss-larm.com">Samuel Kax</a> för att lägga till enheter i den listan.</li>
         </ul>
 
         <div class="back-link">

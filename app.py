@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, send_file, redirect, url_for, Response, flash
+import pandas as pd
 import os
-import csv
-import io
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Required for flashing messages
@@ -16,70 +15,94 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
-# Function to read invalid types from a text file
+# Read lookup data from device_types.txt
+# Den här funktionen läser filen som innehåller enheter till artikelnummer och objektskod
+def load_lookup():
+    lookup_artnr = {}
+    lookup_object_code = {}
+    try:
+        with open('device_types.txt', 'r') as file:
+            for line in file:
+                # Split the line into three parts: device_type, article_number, object_code
+                device_type, article_number, object_code = line.strip().split(';')
+                lookup_artnr[device_type] = article_number
+                lookup_object_code[device_type] = object_code
+    except FileNotFoundError:
+        print("Error: 'device_types.txt' not found.")
+    except ValueError:
+        print("Error: Incorrect formatting in 'device_types.txt'.")
+    
+    return lookup_artnr, lookup_object_code
+
+# Function to read invalid types from the file
+# Den här funktionen läser filen som innehåller enheter som inte ska vara med i sektionsförteckningen
 def read_invalid_types(file_path):
     invalid_types = set()
-    with open(file_path, 'r', encoding='latin-1') as f:
-        for line in f:
-            invalid_types.add(line.strip())
+    try:
+        with open(file_path, 'r', encoding='latin-1') as f:
+            for line in f:
+                invalid_types.add(line.strip())
+    except FileNotFoundError:
+        print(f"Error: '{file_path}' not found.")
     return invalid_types
 
+# Function to process the CSV and make modifications
+def process_csv_mbiz(file_path, lookup_data_artnr, lookup_data_object_code):
+
+    # Skip the first few irrelevant rows (assuming actual data starts from row 12)
+    csv_data = pd.read_csv(file_path, sep=';', skiprows=11, encoding='ISO-8859-1', dtype={'Address': str})
+
+    # Rename the columns to match your input structure
+    csv_data.columns = ['Panel', 'Zone', 'Address', 'Device type', 'Input function', 'Protocol', 'Customer text']
+
+    # Create a DataFrame for mbizSheet (the output CSV)
+    mbiz_data = pd.DataFrame()
+
+    # Fill 'Antal' with the number '1'
+    mbiz_data['Antal'] = [1] * len(csv_data)
+    
+    # Modify 'UNR/Adress' column by concatenating with '=H1' and add object code and address
+    mbiz_data['UNR/Adress'] = "=H1" + csv_data['Device type'].apply(lambda x: lookup_data_object_code.get(x, 'Not Found')) + csv_data['Address']
+
+    # Copy 'Sektionsnummer' from 'Zone'
+    mbiz_data['Sektionsnummer'] = csv_data['Zone']
+
+    # Copy 'Placering rum' from 'Customer text'
+    mbiz_data['Placering rum'] = csv_data['Customer text']
+
+    # Lookup the value in 'Device type' from 'device_types.txt' and fill 'Artikelnummer'
+    mbiz_data['Artikelnummer'] = csv_data['Device type'].apply(lambda x: lookup_data_artnr.get(x, 'Not Found'))
+
+    # Save the modified DataFrame to a new CSV
+    output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'import_till_mbiz.csv')
+    mbiz_data.to_csv(output_path, index=False, sep=';')
+    
+    return output_path
+
 # Function to process CSV data and return as a list of rows
-def process_csv(file_content, invalid_types):
-    processed_output = io.StringIO()
-    writer = csv.writer(processed_output, delimiter=';')
+def process_csv(file_path, invalid_types):
+    # Read the CSV content into a pandas DataFrame, skipping the first 12 rows
+    csv_data = pd.read_csv(file_path, sep=';', skiprows=11, encoding='ISO-8859-1', dtype={'Address': str})
     
-    # Initialize dictionary for grouping by zone
-    zone_dict = {}
+    # Rename the columns to match your input structure
+    csv_data.columns = ['Panel', 'Zone', 'Address', 'Device type', 'Input function', 'Protocol', 'Customer text']
     
-    # Read the CSV file from file_content
-    file_stream = io.StringIO(file_content.decode('latin-1'))  # Read file content using latin-1 encoding
-    reader = csv.reader(file_stream, delimiter=';')
+    # Filter out invalid device types
+    csv_data = csv_data[~csv_data['Device type'].isin(invalid_types)]
     
-    # Read and check the third row (after reading the first two rows)
-    next(reader, None)  # Read and ignore the first row (header)
-    next(reader, None)  # Read and ignore the second row
-    third_row = next(reader, None)  # Read the third row for checking
-    if third_row and third_row[0] != "Rapport konfiguration":
-        # Print the third row for debugging purposes
-        print(f"Third row found: {third_row}")
-        
-        # Return an error message including the third row content
-        return None, f"Error: The third row does not contain 'Rapport konfiguration'. Found: {third_row}"
+    # Group by the 'Zone' and aggregate the addresses
+    sektionsforteckning = csv_data.groupby('Zone')['Address'].apply(list).reset_index()
     
-    # Skip rows 4 through 12
-    for _ in range(9):
-        next(reader, None)
+    # Apply the shorten_address_list function to each group
+    sektionsforteckning['Address'] = sektionsforteckning['Address'].apply(lambda x: ", ".join(shorten_address_list(x)))
+
+    # Save the processed sektionsforteckning DataFrame to a new CSV
+    output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'sektionsforteckning.csv')
+    sektionsforteckning.to_csv(output_path, index=False, sep=';')
     
-    # Begin processing from the 13th row onwards
-    for row in reader:
-        if len(row) < 3:
-            continue  # Skip rows that don't have enough columns
-        zone = row[1].strip('"')
-        address = row[2].strip('"')
-        device_type = row[3].strip('"')
-        
-        # Check if device type is in the invalid types list
-        if device_type not in invalid_types:
-            if zone not in zone_dict:
-                zone_dict[zone] = []
-            zone_dict[zone].append(address)
-    
-    # Collect the processed data into a list of rows
-    processed_rows = []
-    for zone, addresses in zone_dict.items():
-        if len(addresses) == 1:
-            processed_rows.append([zone, addresses[0]])
-        else:
-            addresses.sort()
-            ranges = shorten_address_list(addresses)
-            processed_rows.append([zone, ", ".join(ranges)])
-    
-    # Write processed rows to the output CSV
-    for row in processed_rows:
-        writer.writerow(row)
-    
-    return processed_rows, processed_output.getvalue()
+    # Return the path to the saved CSV file
+    return output_path
+
 
 # Function to shorten the list of addresses
 def shorten_address_list(addresses):
@@ -106,36 +129,59 @@ def shorten_address_list(addresses):
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        # Check if the post request has the file part
         if 'file' not in request.files:
             flash('No file part', 'error')
             return redirect(request.url)
-        
+
         file = request.files['file']
         if file and allowed_file(file.filename):
-            # Load invalid types from text file
-            invalid_types = read_invalid_types(app.config['INVALID_TYPES_FILE'])
-            
-            # Read the file content
-            file_content = file.read()  # Read file content as bytes
-            processed_rows, result_or_error = process_csv(file_content, invalid_types)
-            
-            if processed_rows is None:
-                flash(result_or_error, 'error')
+            # Save the file to a temporary location
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            file.save(file_path)  # Save the uploaded file to a specific path
+
+            # Step 1: Check if the third row contains "Rapport konfiguration"
+            try:
+                # Read only the first 3 rows to check the third row content
+                first_rows = pd.read_csv(file_path, sep=';', nrows=3, header=None, skiprows=1, encoding='ISO-8859-1')
+
+                # Extract only the first column (where "Rapport konfiguration" should be)
+                second_row = first_rows.iloc[1, 0]  # Get the first column value from the third row
+
+                # Check if "Rapport konfiguration" is in the third row's first column
+                if "Rapport konfiguration" not in str(second_row):
+                    flash('Invalid file format: Det verkar inte vara en korrekt Schneider-fil. Den andra raden måste innehålla "Rapport konfiguration".', 'error')
+                    return redirect(request.url)
+            except Exception as e:
+                flash(f"Error reading the file: {str(e)}", 'error')
                 return redirect(request.url)
-            
-            # Save the processed file to a temporary location
-            output_filename = os.path.join(app.config['UPLOAD_FOLDER'], 'sektionsforteckning.csv')
-            with open(output_filename, 'w', newline='', encoding='latin-1') as f:
-                f.write(result_or_error)
-            
-            return render_template('index.html', processed_rows=processed_rows, download_link=output_filename)
-    
+
+            # Proceed with loading lookup data and processing the CSV files if the check passes
+            lookup_data_artnr, lookup_data_H1_type = load_lookup()  # Load device type data
+            invalid_types = read_invalid_types(app.config['INVALID_TYPES_FILE'])  # Load invalid types
+
+            # Process first CSV (mbiz) with the saved file path and lookup data
+            output_import_to_mbiz_path = process_csv_mbiz(file_path, lookup_data_artnr, lookup_data_H1_type)
+
+            # Process second CSV (sektionsforteckning) with invalid types
+            output_sektionsforteckning_path = process_csv(file_path, invalid_types)
+
+            # Load the processed sektionsforteckning data to pass to the template
+            df_sektionsforteckning = pd.read_csv(output_sektionsforteckning_path, sep=';')
+            processed_rows = df_sektionsforteckning.values.tolist()
+
+            # Return the page with download links for both CSVs and the table data
+            return render_template('index.html', 
+                                   download_links=[output_import_to_mbiz_path, output_sektionsforteckning_path], 
+                                   processed_rows=processed_rows)
+
     return render_template('index.html')
+
+
+
 
 @app.route('/download/<path:filename>')
 def download_file(filename):
-    return send_file(filename, as_attachment=True, download_name='sektionsforteckning.csv')
+    return send_file(filename, as_attachment=True, download_name=os.path.basename(filename))
 
 @app.route('/readme')
 def readme():

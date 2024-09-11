@@ -12,7 +12,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px; /* Add some space before the table */
+            margin-top: 20px;
         }
         table, th, td {
             border: 1px solid black;
@@ -22,8 +22,10 @@
             text-align: left;
         }
         .download-button {
-            margin-top: 20px; /* Add space above the download button */
-            margin-bottom: 20px; /* Add space below the download button */
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            margin-bottom: 20px;
         }
         .error {
             color: red;
@@ -37,17 +39,21 @@
         }
         .links a {
             display: block;
-            margin-bottom: 5px; /* Space between the links */
+            margin-bottom: 5px;
+        }
+        .download-buttons {
+            display: flex;
+            gap: 20px;
         }
     </style>
 </head>
 <body>
-    <h1>Schneider-programmering till sektionsförteckning v0.1-a.1</h1>
+    <h1>Schneider-programmering till sektionsförteckning och mbiz v0.2</h1>
     
     <!-- Links to the README and Release Notes pages positioned in the upper right corner -->
     <div class="links">
         <a href="{{ url_for('release_notes') }}">Release Notes</a>
-        <a href="{{ url_for('readme') }}">Read Instructions</a>
+        <a href="{{ url_for('readme') }}">README</a>
     </div>
 
     <!-- Display flashed messages -->
@@ -67,8 +73,15 @@
     </form>
 
     {% if processed_rows %}
+    <!-- Download buttons for both processed files -->
     <div class="download-button">
-        <a href="{{ url_for('download_file', filename=download_link) }}">
+        <!-- Download link for import_till_mbiz.csv -->
+        <a href="{{ url_for('download_file', filename=download_links[0]) }}">
+            <button>Ladda ned fil till mbiz</button>
+        </a>
+
+        <!-- Download link for sektionsforteckning.csv -->
+        <a href="{{ url_for('download_file', filename=download_links[1]) }}">
             <button>Ladda ned sektionsförteckning</button>
         </a>
     </div>
