@@ -73,6 +73,9 @@ def process_csv_mbiz(file_path, lookup_data_artnr, lookup_data_object_code):
     # Lookup the value in 'Device type' from 'device_types.txt' and fill 'Artikelnummer'
     mbiz_data['Artikelnummer'] = csv_data['Device type'].apply(lambda x: lookup_data_artnr.get(x, 'Not Found'))
 
+    # Filter out rows where 'Artikelnummer' is 'not_available' according to device_types.txt
+    mbiz_data = mbiz_data[mbiz_data['Artikelnummer'] != 'not_available']
+
     # Save the modified DataFrame to a new CSV
     output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'import_till_mbiz.csv')
     mbiz_data.to_csv(output_path, index=False, sep=';')
@@ -88,7 +91,10 @@ def process_csv(file_path, invalid_types):
     csv_data.columns = ['Panel', 'Zone', 'Address', 'Device type', 'Input function', 'Protocol', 'Customer text']
     
     # Filter out invalid device types
-    csv_data = csv_data[~csv_data['Device type'].isin(invalid_types)]
+    csv_data = csv_data[
+        (~csv_data['Device type'].isin(invalid_types)) |
+        (csv_data['Input function'] == 'Fire alarm input')
+    ]
     
     # Group by the 'Zone' and aggregate the addresses
     sektionsforteckning = csv_data.groupby('Zone')['Address'].apply(list).reset_index()

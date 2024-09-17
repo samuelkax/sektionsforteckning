@@ -4,3 +4,6 @@ Wall mounted strobe
 Single output module
 Wall mounted sounder strobe
 Single output module, 240V
+Single input module
+Dual input module
+Input channel

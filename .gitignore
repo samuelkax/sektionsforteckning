@@ -21,3 +21,6 @@ Thumbs.db
 # Ignore IDE and editor specific files
 .vscode/
 .idea/
+
+# Ignore processed_files directory
+processed_files/
